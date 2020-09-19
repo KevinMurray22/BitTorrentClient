@@ -63,6 +63,7 @@ public class Message {
         bb.put(4, (byte)0x1);
         bb.rewind();
         message = bb.array();
+        System.out.println("Unchoke of: " + Arrays.toString(message));
     }
 
     public void buildInterested(){
@@ -71,6 +72,7 @@ public class Message {
         bb.put(4, (byte)0x2);
         bb.rewind();
         message =  bb.array();
+        System.out.println("Interested of: " + Arrays.toString(message));
     }
 
     public static byte[] buildNotInterested(){
@@ -98,17 +100,20 @@ public class Message {
         bb.rewind();
         return bb.array();
     }
-    /*
-    public static byte[] buildRequest(byte[] payload){
-        ByteBuffer bb = ByteBuffer.allocate(5);
-        bb.put(0, ByteBuffer.allocate(4).putInt(13).array());
+
+    public void buildRequest(int index, int begin, int length){
+        ByteBuffer bb = ByteBuffer.allocate(17);
+        byte[] len = {0,0,0,13};
+        bb.put(0, len);
         bb.put(4, (byte)0x6);
-        bb.put(5, payload);
+        bb.put(5, ByteBuffer.allocate(4).putInt(index).array());
+        bb.put(9, ByteBuffer.allocate(4).putInt(begin).array());
+        bb.put(13, ByteBuffer.allocate(4).putInt(length).array());
         bb.rewind();
-        return bb.array();
-
+        message = bb.array();
+        System.out.println("Request of: " + Arrays.toString(message));
     }
-
+/*
     public static byte[] buildPiece(){
 
     }

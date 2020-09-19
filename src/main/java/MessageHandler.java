@@ -94,30 +94,82 @@ public class MessageHandler {
         byte[] bLen = new byte[4];
         byte[] buf;
         byte[] byteMsg;
-        try{
-            in.readNBytes(bLen,0,4);
-            int length = ByteBuffer.wrap(Arrays.copyOfRange(bLen, 0, 4)).getInt();
-            System.out.println("Length: " + Arrays.toString(bLen));
-            buf = new byte[length];
-            in.readNBytes(buf, 0, length);
-            System.out.println("Rest: " + Arrays.toString(buf));
-            byteMsg = new byte[bLen.length + buf.length];
-            System.arraycopy(bLen, 0, byteMsg, 0, bLen.length);
-            System.arraycopy(buf, 0, byteMsg, bLen.length, buf.length);
-            System.out.println("Combined: " + Arrays.toString(byteMsg));
-            Message message = new Message(byteMsg);
-            handle(message);
 
-        }
-        catch (EOFException e){
-            System.out.println("End of input stream reached");
+        while(in.available()!=0) {
+            try {
+                in.readNBytes(bLen, 0, 4);
+                int length = ByteBuffer.wrap(Arrays.copyOfRange(bLen, 0, 4)).getInt();
+                buf = new byte[length];
+                in.readNBytes(buf, 0, length);
+                byteMsg = new byte[bLen.length + buf.length];
+                System.arraycopy(bLen, 0, byteMsg, 0, bLen.length);
+                System.arraycopy(buf, 0, byteMsg, bLen.length, buf.length);
+                Message message = new Message(byteMsg);
+                System.out.println("Received message in bytes: " + Arrays.toString(byteMsg));
+                handle(message);
+
+            } catch (EOFException e) {
+                System.out.println("End of input stream reached");
+            }
+
         }
     }
 
+    public void sendMessage(Message message) throws IOException {
+        ByteArrayOutputStream bOut = new ByteArrayOutputStream();
+        bOut.write(message.getMessage());
+        bOut.writeTo(out);
+        bOut.reset();
+    }
+
+    public void sendInterested() throws IOException {
+        Message message = new Message();
+        message.buildInterested();
+        sendMessage(message);
+    }
+
+    public void sendUnChoke() throws IOException {
+        Message message = new Message();
+        message.buildUnChoke();
+        sendMessage(message);
+    }
+
+    public void requestPiece(int index, int begin, int length) throws IOException {
+        System.out.println("Requesting piece: " + index + " with beginning: " + begin + " and length: " + length);
+
+        Message message = new Message();
+        message.buildRequest(index, begin, length);
+        sendMessage(message);
+    }
+
     private void handle(Message message) {
-        if(message.getId() == 5){
-           // peer.setBitfield(Arrays.copyOfRange(message.getPayload(), 0, message.getMsgLen()));
-            peer.setBitfield(message.getPayload());
+        System.out.println("Handling message of id: " + message.getId());
+        switch (message.getId()) {
+            case 0 -> peer.setPeer_choking(true);
+            case 1 -> peer.setPeer_choking(false);
+            case 2 -> peer.setPeer_interested(true);
+            case 3 -> peer.setPeer_interested(false);
+            case 4 -> peer.setBitInBitfield(ByteBuffer.wrap(message.getPayload()).getInt());
+            case 5 -> peer.setBitfield(message.getPayload());
+            case 7 -> writeToString(message.getPayload());
         }
+
+    }
+
+    public void writeToString(byte[] payload){
+        byte[] block = Arrays.copyOfRange(payload, 8, payload.length);
+        System.out.println("Downloaded block: " + Arrays.toString(block));
+    }
+
+    public byte[] toByteArrayProper(int num){
+        int digits = 0;
+        for (int x = num; x>0; x/=10)
+            digits++;
+        byte[] byteArray = new byte[digits];
+        for (int x = byteArray.length-1; x>=0; x++){
+            byteArray[x] = (byte)(num%10);
+            num/=10;
+        }
+        return byteArray;
     }
 }
